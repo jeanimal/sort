@@ -258,13 +258,15 @@ def parse_args():
     parser.add_argument('--display', dest='display', help='Display online tracker output (slow) [False]',action='store_true')
     parser.add_argument("--seq_path", help="Path to detections.", type=str, default='data')
     parser.add_argument("--phase", help="Subdirectory in seq_path.", type=str, default='train')
+    parser.add_argument("--folder_glob", help="Data set folder name pattern match.", type=str, default='*')
     parser.add_argument("--max_age", 
                         help="Maximum number of frames to keep alive a track without associated detections.", 
                         type=int, default=1)
     parser.add_argument("--min_hits", 
                         help="Minimum number of associated detections before track is initialised.", 
                         type=int, default=3)
-    parser.add_argument("--iou_threshold", help="Minimum IOU for match.", type=float, default=0.3)
+    parser.add_argument("--iou_threshold", help="Minimum IOU (intersection-over-union) for match.", type=float, default=0.3)
+    parser.add_argument("--output_dir", help="Path to detections.", type=str, default='output')
     args = parser.parse_args()
     return args
 
@@ -284,26 +286,34 @@ if __name__ == '__main__':
     fig = plt.figure()
     ax1 = fig.add_subplot(111, aspect='equal')
 
-  if not os.path.exists('output'):
-    os.makedirs('output')
-  pattern = os.path.join(args.seq_path, phase, '*', 'det', 'det.txt')
+  if not os.path.exists(args.output_dir):
+    os.makedirs(args.output_dir)
+  pattern = os.path.join(args.seq_path, phase, args.folder_glob, 'det', 'det.txt')
+  print(f"\nLooking for files in {pattern}")
+  if len(glob.glob(pattern)) == 0:
+    print(f"No matching files found in {pattern}")
+    exit(0)
   for seq_dets_fn in glob.glob(pattern):
+    print(f"Processing detections in file {seq_dets_fn}")
     mot_tracker = Sort(max_age=args.max_age, 
                        min_hits=args.min_hits,
                        iou_threshold=args.iou_threshold) #create instance of the SORT tracker
     seq_dets = np.loadtxt(seq_dets_fn, delimiter=',')
     seq = seq_dets_fn[pattern.find('*'):].split(os.path.sep)[0]
     
-    with open(os.path.join('output', '%s.txt'%(seq)),'w') as out_file:
-      print("Processing %s."%(seq))
-      for frame in range(int(seq_dets[:,0].max())):
+    with open(os.path.join(args.output_dir, '%s.txt'%(seq)),'w') as out_file:
+      print(f"Processing {seq}")
+      num_frames = seq_dets[:,0].max()
+      print(f"Having num frames: {num_frames}")
+      for frame in range(int(num_frames)):
         frame += 1 #detection and frame numbers begin at 1
         dets = seq_dets[seq_dets[:, 0]==frame, 2:7]
-        dets[:, 2:4] += dets[:, 0:2] #convert to [x1,y1,w,h] to [x1,y1,x2,y2]
+        dets[:, 2:4] += dets[:, 0:2] #convert from [x1,y1,w,h] to [x1,y1,x2,y2]
         total_frames += 1
 
         if(display):
           fn = os.path.join('mot_benchmark', phase, seq, 'img1', '%06d.jpg'%(frame))
+          print(f"Frame file name: {fn}")
           im =io.imread(fn)
           ax1.imshow(im)
           plt.title(seq + ' Tracked Targets')
@@ -317,11 +327,13 @@ if __name__ == '__main__':
           print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1'%(frame,d[4],d[0],d[1],d[2]-d[0],d[3]-d[1]),file=out_file)
           if(display):
             d = d.astype(np.int32)
+            # convert back from [x1,y1,x2,y2] to [x1,y1,w,h]
             ax1.add_patch(patches.Rectangle((d[0],d[1]),d[2]-d[0],d[3]-d[1],fill=False,lw=3,ec=colours[d[4]%32,:]))
 
         if(display):
           fig.canvas.flush_events()
           plt.draw()
+          input("Press Enter to continue...")
           ax1.cla()
 
   print("Total Tracking took: %.3f seconds for %d frames or %.1f FPS" % (total_time, total_frames, total_frames / total_time))

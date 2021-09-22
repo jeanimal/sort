@@ -1,3 +1,64 @@
+FORK OF SORT
+============
+
+I added a conda environment and some extra command line flags to control input and output.
+
+Here is how I use it.
+
+### Environment
+
+```
+conda env create --file environment.yml
+conda activate env_sort
+```
+
+### Data processing
+
+```
+MAX_AGE=3
+MIN_HITS=4
+IOU_THRESHOLD=0.1
+OUTDIR="out_${MAX_AGE}_${MIN_HITS}_01"
+python sort.py --folder_glob="*ETH-Bahnhof*" --output_dir="${OUTDIR}" --max_age="${MAX_AGE}" \
+  --min_hits="${MIN_HITS}" --iou_threshold="${IOU_THRESHOLD}" 
+
+# Track_id is in column 2 of the csv.  The awk below will generat a histogram of count, track_id. 
+awk -F "\"*,\"*" '{print $2}' "${OUTDIR}/ETH-Bahnhof.txt" | sort | uniq -c | sort -r
+```
+
+Example output of the awk statement is below.  The first number is the count, the second is the track_id.
+```
+  136 287
+  110 215
+   97 217
+   93 58
+<snip>
+```
+
+### Visualization
+
+Sometimes the visualization goes by too fast, so I added a wait for command-line input before proceeding to the next image. 
+
+Invoke a run as usual by adding the --display flag.  Example below.
+```
+MAX_AGE=3
+MIN_HITS=4
+IOU_THRESHOLD=0.1
+python sort.py --folder_glob="*ETH-Bahnhof*" --max_age="${MAX_AGE}" \
+  --min_hits="${MIN_HITS}" --iou_threshold="${IOU_THRESHOLD}" \
+  --display
+```
+
+Now every time you see an image, you must hit enter in the command line shell to move on.  Below is the relevant code snippet.
+
+```
+        if(display):
+          fig.canvas.flush_events()
+          plt.draw()
+          input("Press Enter to continue...")
+```
+
+
 SORT
 =====
 
