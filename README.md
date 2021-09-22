@@ -12,7 +12,14 @@ conda env create --file environment.yml
 conda activate env_sort
 ```
 
-### Data processing
+### Extra flags
+
+* folder_glob: A glob to limit the folders in the mot challenge to evaluate.  The default of "*" will evaluate all, same as the original library.
+* output_dir: Directory to output a csv of detections.
+
+### Data processing example
+
+Below I demonstrate usage of the two extra flags to evaluate just the ETH-BAHNHOF data, dump the detections csv to an output directory, and then run an awk script to generate stats about the detections.
 
 ```
 MAX_AGE=3
